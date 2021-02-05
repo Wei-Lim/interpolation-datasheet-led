@@ -1,46 +1,20 @@
 ---
-title: "DataInterpolation"
+title: "Data Interpolation"
 author: "William Truong"
 date: "`r Sys.Date()`"
 output:
-  pdf_document:
-    toc: yes
-    toc_depth: '3'
   html_document:
     number_sections: yes
     toc: yes
     toc_collapsed: yes
     toc_depth: 3
     toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
 editor_options:
   chunk_output_type: inline
 ---
-
-# ```{r setup, include=FALSE}
-# knitr::opts_chunk$set(echo = TRUE)
-# ```
-## Header and Definitions
-```{r, echo = FALSE}
-rm(list=ls(all = TRUE))
-cat("\014")
-### set workspace directory
-#setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
-setwd("T:/Tools/Pracht_Truong/Interpolation von Datenblattwerten")
-```
-
-## R library
-```{r, warning = FALSE, message = FALSE}
-library(tictoc)
-library(ggplot2)
-#library(Hmisc)
-#library(polycor)
-#library(gmodels)
-#library(plyr)
-library(knitr)
-#library(cowplot)
-library(reticulate)
-use_python("C:/Users/wt/AppData/Local/Programs/Python/Python37-32/")
-```
 
 # Data interpolation
 python packages
@@ -51,7 +25,6 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import InterpolatedUnivariateSpline
 ```
 
-
 python function for importing csv-files with only floating numbers
 ```{python}
 # csv to float
@@ -59,6 +32,7 @@ def read_csv(filename):
     with open(filename, newline='') as f_input:
         return [list(map(float, row)) for row in csv.reader(f_input)]
 ```
+
 
 ```{python}
 # light flux in lm (or relative)
@@ -85,12 +59,12 @@ fileName = "Osram_PL-LIN-Z6 2000-830 280X20-LV-HV"
 
 ```{python}
 # current and voltage
-Flux_I = np.array(read_csv('Flux-I.csv'))
-Flux_T = np.array(read_csv('Flux-T.csv'))
-U_I = np.array(read_csv('U-I.csv'))
-U_T = np.array(read_csv('U-T.csv'))
+Flux_I = np.array(read_csv('input/Flux-I.csv'))
+Flux_T = np.array(read_csv('input/Flux-T.csv'))
+U_I = np.array(read_csv('input/U-I.csv'))
+U_T = np.array(read_csv('input/U-T.csv'))
 # spectrum
-SPD = np.array(read_csv('Spectrum.csv'))
+SPD = np.array(read_csv('input/Spectrum.csv'))
 ```
 
 ```{python}
@@ -180,6 +154,7 @@ plt.show()
 ```
 
 Export to csv-file
+
 ```{python}
 # merging to export to csv data
 #print(FluxInew[:,0])
@@ -190,7 +165,8 @@ result_FluxUI = np.transpose(result_FluxUI)
 result_FluxUT = np.transpose(result_FluxUT)
 result_Spectrum = np.transpose(result_Spectrum)
 
-np.savetxt(fileName+'_I.csv', result_FluxUI, fmt='%f', delimiter=',')
-np.savetxt(fileName+'_T.csv', result_FluxUT, fmt='%f', delimiter=',')
-np.savetxt(fileName+'_Spectrum.csv', result_Spectrum, fmt='%f', delimiter=',')
+np.savetxt('output/'+fileName+'_I.csv', result_FluxUI, fmt='%f', delimiter=',')
+np.savetxt('output/'+fileName+'_T.csv', result_FluxUT, fmt='%f', delimiter=',')
+np.savetxt('output/'+fileName+'_Spectrum.csv', result_Spectrum, fmt='%f', delimiter=',')
 ```
+
