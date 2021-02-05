@@ -1,0 +1,196 @@
+---
+title: "DataInterpolation"
+author: "William Truong"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
+  html_document:
+    number_sections: yes
+    toc: yes
+    toc_collapsed: yes
+    toc_depth: 3
+    toc_float: yes
+editor_options:
+  chunk_output_type: inline
+---
+
+# ```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+# ```
+## Header and Definitions
+```{r, echo = FALSE}
+rm(list=ls(all = TRUE))
+cat("\014")
+### set workspace directory
+#setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+setwd("T:/Tools/Pracht_Truong/Interpolation von Datenblattwerten")
+```
+
+## R library
+```{r, warning = FALSE, message = FALSE}
+library(tictoc)
+library(ggplot2)
+#library(Hmisc)
+#library(polycor)
+#library(gmodels)
+#library(plyr)
+library(knitr)
+#library(cowplot)
+library(reticulate)
+use_python("C:/Users/wt/AppData/Local/Programs/Python/Python37-32/")
+```
+
+# Data interpolation
+python packages
+```{python}
+import csv
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.interpolate import InterpolatedUnivariateSpline
+```
+
+
+python function for importing csv-files with only floating numbers
+```{python}
+# csv to float
+def read_csv(filename):
+    with open(filename, newline='') as f_input:
+        return [list(map(float, row)) for row in csv.reader(f_input)]
+```
+
+```{python}
+# light flux in lm (or relative)
+Flux_N = 1878
+# voltage in V (or relative)
+U_N = 42.7
+# current in A
+I_N = 0.250
+I_min = 0.050
+I_max = 0.450
+I_it = 0.001
+# temperature in Celsius
+T_N = 50
+T_min = 25
+T_max = 75
+T_it = 0.5
+# wavelength in nm
+lbd_min = 380
+lbd_max = 780
+lbd_it = 1
+# filename
+fileName = "Osram_PL-LIN-Z6 2000-830 280X20-LV-HV"
+```
+
+```{python}
+# current and voltage
+Flux_I = np.array(read_csv('Flux-I.csv'))
+Flux_T = np.array(read_csv('Flux-T.csv'))
+U_I = np.array(read_csv('U-I.csv'))
+U_T = np.array(read_csv('U-T.csv'))
+# spectrum
+SPD = np.array(read_csv('Spectrum.csv'))
+```
+
+```{python}
+# spline interpolation function
+spl_Flux_I = InterpolatedUnivariateSpline(Flux_I[:,0], Flux_I[:,1])
+spl_Flux_T = InterpolatedUnivariateSpline(Flux_T[:,0], Flux_T[:,1])
+spl_U_I = InterpolatedUnivariateSpline(U_I[:,0], U_I[:,1])
+spl_U_T = InterpolatedUnivariateSpline(U_T[:,0], U_T[:,1])
+spl_Spectrum = InterpolatedUnivariateSpline(SPD[:,0], SPD[:,1])
+
+# interpolated x values
+Inew = np.arange(I_min, I_max+I_it, I_it)
+Tnew = np.arange(T_min, T_max+T_it, T_it)
+lbdnew = np.arange(lbd_min, lbd_max+lbd_it, lbd_it)
+
+# rounding
+for i in range(len(Inew)):
+    Inew[i] = round(Inew[i],3)
+for i in range(len(Tnew)):
+    Tnew[i] = round(Tnew[i],1)
+for i in range(len(lbdnew)):
+    lbdnew[i] = round(lbdnew[i],0)
+
+# interpolated y values
+FluxInew = spl_Flux_I(Inew)
+FluxTnew = spl_Flux_T(Tnew)
+UInew = spl_U_I(Inew)
+UTnew = spl_U_T(Tnew)
+SPDnew = spl_Spectrum(lbdnew)
+
+# correcting offset to nominal value
+idx_I = np.where(Inew == I_N)
+FluxInew = FluxInew - (FluxInew[idx_I] - Flux_N);
+UInew = UInew - (UInew[idx_I] - U_N);
+
+idx_T = np.where(Tnew == T_N)
+FluxTnew = FluxTnew - (FluxTnew[idx_T] - Flux_N);
+UTnew = UTnew - (UTnew[idx_T] - U_N);
+
+# spectrum normilize to maximum
+SPDnew = SPDnew/max(SPDnew)
+```
+# Results
+light flux, voltage, current and temperatur plots
+```{python}
+fig, axs = plt.subplots(2, 2)
+
+axs[0, 0].plot(Flux_I[:,0], Flux_I[:,1], 'x', Inew, FluxInew, '-',I_N, Flux_N, 'ro')
+axs[0, 0].legend(['data', 'spline','nominal'], loc='best')
+axs[0, 0].set(ylabel='Light flux in lm')
+axs[0, 0].grid()
+
+axs[0, 1].plot(Flux_T[:,0], Flux_T[:,1], 'x', Tnew, FluxTnew, '-',T_N, Flux_N, 'ro')
+axs[0, 1].legend(['data', 'spline','nominal'], loc='best')
+axs[0, 1].grid()
+axs[0, 1].plot()
+
+axs[1, 0].plot(U_I[:,0], U_I[:,1], 'x', Inew, UInew, '-',I_N, U_N, 'ro')
+axs[1, 0].legend(['data', 'spline','nominal'], loc='best')
+axs[1, 0].set(xlabel='Current in A', ylabel='Voltage in V')
+axs[1, 0].grid()
+
+axs[1, 1].plot(U_T[:,0], U_T[:,1], 'x', Tnew, UTnew, '-',T_N, U_N, 'ro')
+axs[1, 1].legend(['data', 'spline','nominal'], loc='best')
+axs[1, 1].set(xlabel='Temperature in Celsius')
+axs[1, 1].grid()
+
+fig.set_size_inches(12.8, 9.6)
+plt.show()
+```
+Spectrum plot
+```{python}
+fig1, axs1 = plt.subplots(2, 1)
+
+axs1[0].plot(SPD[:,0], SPD[:,1], '-')
+axs1[0].legend(['original data'], loc='best')
+axs1[0].set(ylabel='Absolute')
+axs1[0].grid()
+
+axs1[1].plot(SPD[:,0], SPD[:,1]/max(SPD[:,1]), 'x',lbdnew, SPDnew, '-')
+axs1[1].legend(['data normilize to max', 'spline'], loc='best')
+axs1[1].set(xlabel='Wavelength in nm', ylabel='Relativ spectral Power')
+axs1[1].grid()
+
+fig1.set_size_inches(12.8, 7)
+plt.show()
+```
+
+Export to csv-file
+```{python}
+# merging to export to csv data
+#print(FluxInew[:,0])
+result_FluxUI = [Inew,FluxInew,UInew]
+result_FluxUT = [Tnew,FluxTnew,UTnew]
+result_Spectrum = [lbdnew,SPDnew]
+result_FluxUI = np.transpose(result_FluxUI)
+result_FluxUT = np.transpose(result_FluxUT)
+result_Spectrum = np.transpose(result_Spectrum)
+
+np.savetxt(fileName+'_I.csv', result_FluxUI, fmt='%f', delimiter=',')
+np.savetxt(fileName+'_T.csv', result_FluxUT, fmt='%f', delimiter=',')
+np.savetxt(fileName+'_Spectrum.csv', result_Spectrum, fmt='%f', delimiter=',')
+```
